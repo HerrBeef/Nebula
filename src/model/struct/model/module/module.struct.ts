@@ -59,8 +59,8 @@ export abstract class ModuleStructure extends BaseModelStructure<Module> {
             name: await this.getModuleName(file, filePath),
             type: this.type,
             required: {
-                value: false,
-                def: false
+                value: true,
+                def: true
             },
             artifact: {
                 size: stats.size,
