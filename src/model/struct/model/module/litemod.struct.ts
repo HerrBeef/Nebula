@@ -6,6 +6,9 @@ import { resolve } from 'url'
 import { capitalize } from '../../../../util/stringutils'
 import { LiteMod } from '../../../liteloader/litemod'
 import { ToggleableModuleStructure } from './toggleablemodule.struct'
+import { MinecraftVersion } from '../../../../util/MinecraftVersion'
+import { LibraryType } from '../../../claritas/ClaritasLibraryType'
+import { MetadataUtil } from '../../../../util/MetadataUtil'
 
 export class LiteModStructure extends ToggleableModuleStructure {
 
@@ -14,14 +17,20 @@ export class LiteModStructure extends ToggleableModuleStructure {
     constructor(
         absoluteRoot: string,
         relativeRoot: string,
-        baseUrl: string
+        baseUrl: string,
+        minecraftVersion: MinecraftVersion
     ) {
-        super(absoluteRoot, relativeRoot, 'litemods', baseUrl, Type.LiteMod)
+        super(absoluteRoot, relativeRoot, 'litemods', baseUrl, minecraftVersion, Type.LiteMod)
+    }
+
+    public getLoggerName(): string {
+        return 'LiteModStructure'
     }
 
     protected async getModuleId(name: string, path: string): Promise<string> {
         const liteModData = await this.getLiteModMetadata(name, path)
-        return this.generateMavenIdentifier(liteModData.name, `${liteModData.version}-${liteModData.mcversion}`)
+        return this.generateMavenIdentifier(
+            MetadataUtil.completeGroupInference(this.getClaritasGroup(path), liteModData.name), liteModData.name, `${liteModData.version}-${liteModData.mcversion}`)
     }
     protected async getModuleName(name: string, path: string): Promise<string> {
         return capitalize((await this.getLiteModMetadata(name, path)).name)
@@ -33,6 +42,10 @@ export class LiteModStructure extends ToggleableModuleStructure {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     protected async getModulePath(name: string, path: string, stats: Stats): Promise<string | null> {
         return null
+    }
+
+    protected getClaritasType(): LibraryType {
+        return LibraryType.LITELOADER
     }
 
     private getLiteModMetadata(name: string, path: string): Promise<LiteMod> {
