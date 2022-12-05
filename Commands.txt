@@ -1,0 +1,7 @@
+1. Modpack erstellen: node index.js generate server ProjectRenite12 1.12.2 --forge 14.23.5.2847
+1.1 servermeta.json die Version ändern!
+2. distribution.json erstellen: node index.js generate distro distribution
+2.1 Forgepfad: H:\Modpack Launcher\HerrBeef-Nebula\..Modpack\work
+
+Versionen:
+Develop15 - 1.4.0
