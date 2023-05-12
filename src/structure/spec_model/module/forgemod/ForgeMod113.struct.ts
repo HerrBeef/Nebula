@@ -1,11 +1,11 @@
 import StreamZip from 'node-stream-zip'
 import toml from 'toml'
-import { capitalize } from '../../../../util/stringutils'
-import { VersionUtil } from '../../../../util/versionutil'
-import { ModsToml } from '../../../../model/forge/modstoml'
-import { BaseForgeModStructure } from '../ForgeMod.struct'
-import { MinecraftVersion } from '../../../../util/MinecraftVersion'
-import { UntrackedFilesOption } from '../../../../model/nebula/servermeta'
+import { capitalize } from '../../../../util/StringUtils.js'
+import { VersionUtil } from '../../../../util/VersionUtil.js'
+import { ModsToml } from '../../../../model/forge/ModsToml.js'
+import { BaseForgeModStructure } from '../ForgeMod.struct.js'
+import { MinecraftVersion } from '../../../../util/MinecraftVersion.js'
+import { UntrackedFilesOption } from '../../../../model/nebula/ServerMeta.js'
 
 export class ForgeModStructure113 extends BaseForgeModStructure {
 
@@ -53,7 +53,10 @@ export class ForgeModStructure113 extends BaseForgeModStructure {
                     storeEntries: true
                 })
 
-                zip.on('error', err => reject(err))
+                zip.on('error', err => {
+                    this.logger.error(`Failure while processing ${path}`)
+                    reject(err)
+                })
                 zip.on('ready', () => {
                     try {
                         const res = this.processZip(zip, name, path)

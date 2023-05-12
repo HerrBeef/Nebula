@@ -1,15 +1,16 @@
-import { ForgeResolver } from '../forge.resolver'
-import { MinecraftVersion } from '../../../util/MinecraftVersion'
-import { LoggerUtil } from '../../../util/LoggerUtil'
-import { VersionUtil } from '../../../util/versionutil'
+import { ForgeResolver } from '../Forge.resolver.js'
+import { MinecraftVersion } from '../../../util/MinecraftVersion.js'
+import { LoggerUtil } from '../../../util/LoggerUtil.js'
+import { VersionUtil } from '../../../util/VersionUtil.js'
 import { Module, Type } from 'helios-distribution-types'
-import { LibRepoStructure } from '../../../structure/repo/LibRepo.struct'
-import { pathExists, remove, mkdirs, copy, writeFile, readFile, lstat, writeJson } from 'fs-extra'
+import { LibRepoStructure } from '../../../structure/repo/LibRepo.struct.js'
+import { pathExists, remove, mkdirs, copy, writeJson } from 'fs-extra/esm'
+import { lstat, readFile, writeFile } from 'fs/promises'
 import { join, basename, dirname } from 'path'
 import { spawn } from 'child_process'
-import { JavaUtil } from '../../../util/java/javautil'
-import { VersionManifestFG3 } from '../../../model/forge/VersionManifestFG3'
-import { MavenUtil } from '../../../util/maven'
+import { JavaUtil } from '../../../util/java/JavaUtil.js'
+import { VersionManifestFG3 } from '../../../model/forge/VersionManifestFG3.js'
+import { MavenUtil } from '../../../util/MavenUtil.js'
 import { createHash } from 'crypto'
 
 interface GeneratedFile {
@@ -303,6 +304,8 @@ export class ForgeGradle3Adapter extends ForgeResolver {
             ForgeGradle3Adapter.logger.debug('Installer finished, beginning processing..')
         }
 
+        await this.verifyInstallerRan(installerOutputDir)
+
         ForgeGradle3Adapter.logger.debug('Processing Version Manifest')
         const versionManifestTuple = await this.processVersionManifest(installerOutputDir)
         const versionManifest = versionManifestTuple[0] as VersionManifestFG3
@@ -328,10 +331,24 @@ export class ForgeGradle3Adapter extends ForgeResolver {
 
     }
 
-    private async processVersionManifest(installerOutputDir: string): Promise<[VersionManifestFG3, Module]> {
+    private getVersionManifestPath(installerOutputDir: string): string {
         const versionRepo = this.repoStructure.getVersionRepoStruct()
         const versionName = versionRepo.getFileName(this.minecraftVersion, this.forgeVersion)
-        const versionManifestPath = join(installerOutputDir, 'versions', versionName, `${versionName}.json`)
+        return join(installerOutputDir, 'versions', versionName, `${versionName}.json`)
+    }
+
+    private async verifyInstallerRan(installerOutputDir: string): Promise<void> {
+        const versionManifestPath = this.getVersionManifestPath(installerOutputDir)
+
+        if(!await pathExists(versionManifestPath)) {
+            await remove(installerOutputDir)
+            throw new Error(`Forge was either not installed or installed to the wrong location. When the forge installer opens, you MUST set the installation directory to ${installerOutputDir}`)
+        }
+    }
+
+    private async processVersionManifest(installerOutputDir: string): Promise<[VersionManifestFG3, Module]> {
+        const versionRepo = this.repoStructure.getVersionRepoStruct()
+        const versionManifestPath = this.getVersionManifestPath(installerOutputDir)
 
         const versionManifestBuf = await readFile(versionManifestPath)
         const versionManifest = JSON.parse(versionManifestBuf.toString()) as VersionManifestFG3

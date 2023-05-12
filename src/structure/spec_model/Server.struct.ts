@@ -1,14 +1,21 @@
-import { lstat, mkdirs, pathExists, readdir, readFile, writeFile } from 'fs-extra'
+import { mkdirs, pathExists } from 'fs-extra/esm'
+import { lstat, readdir, readFile, writeFile } from 'fs/promises'
 import { Server, Module } from 'helios-distribution-types'
 import { dirname, join, resolve as resolvePath } from 'path'
 import { URL } from 'url'
-import { VersionSegmentedRegistry } from '../../util/VersionSegmentedRegistry'
-import { ServerMeta, getDefaultServerMeta, ServerMetaOptions, UntrackedFilesOption } from '../../model/nebula/servermeta'
-import { BaseModelStructure } from './BaseModel.struct'
-import { MiscFileStructure } from './module/File.struct'
-import { LibraryStructure } from './module/Library.struct'
-import { MinecraftVersion } from '../../util/MinecraftVersion'
-import { addSchemaToObject, SchemaTypes } from '../../util/SchemaUtil'
+import { VersionSegmentedRegistry } from '../../util/VersionSegmentedRegistry.js'
+import { ServerMeta, getDefaultServerMeta, ServerMetaOptions, UntrackedFilesOption } from '../../model/nebula/ServerMeta.js'
+import { BaseModelStructure } from './BaseModel.struct.js'
+import { MiscFileStructure } from './module/File.struct.js'
+import { LibraryStructure } from './module/Library.struct.js'
+import { MinecraftVersion } from '../../util/MinecraftVersion.js'
+import { addSchemaToObject, SchemaTypes } from '../../util/SchemaUtil.js'
+
+export interface CreateServerResult {
+    forgeModContainer?: string
+    libraryContainer: string
+    miscFileContainer: string
+}
 
 export class ServerStructure extends BaseModelStructure<Server> {
 
@@ -35,25 +42,33 @@ export class ServerStructure extends BaseModelStructure<Server> {
         return this.resolvedModels
     }
 
+    public static getEffectiveId(id: string, minecraftVersion: MinecraftVersion): string {
+        return `${id}-${minecraftVersion}`
+    }
+
     public async createServer(
         id: string,
         minecraftVersion: MinecraftVersion,
         options: {
+            version?: string
             forgeVersion?: string
         }
-    ): Promise<void> {
-        const effectiveId = `${id}-${minecraftVersion}`
+    ): Promise<CreateServerResult | null> {
+        const effectiveId = ServerStructure.getEffectiveId(id, minecraftVersion)
         const absoluteServerRoot = resolvePath(this.containerDirectory, effectiveId)
         const relativeServerRoot = join(this.relativeRoot, effectiveId)
 
         if (await pathExists(absoluteServerRoot)) {
             this.logger.error('Server already exists! Aborting.')
-            return
+            return null
         }
 
         await mkdirs(absoluteServerRoot)
 
-        const serverMetaOpts: ServerMetaOptions = {}
+        const serverMetaOpts: ServerMetaOptions = {
+            version: options.version
+        }
+        let forgeModContainer: string | undefined = undefined
 
         if (options.forgeVersion != null) {
             const fms = VersionSegmentedRegistry.getForgeModStruct(
@@ -65,6 +80,7 @@ export class ServerStructure extends BaseModelStructure<Server> {
                 []
             )
             await fms.init()
+            forgeModContainer = fms.getContainerDirectory()
             serverMetaOpts.forgeVersion = options.forgeVersion
         }
 
@@ -80,6 +96,12 @@ export class ServerStructure extends BaseModelStructure<Server> {
 
         const mfs = new MiscFileStructure(absoluteServerRoot, relativeServerRoot, this.baseUrl, minecraftVersion, [])
         await mfs.init()
+
+        return {
+            forgeModContainer,
+            libraryContainer: libS.getContainerDirectory(),
+            miscFileContainer: mfs.getContainerDirectory()
+        }
 
     }
 
@@ -170,6 +192,7 @@ export class ServerStructure extends BaseModelStructure<Server> {
                     ...(serverMeta.meta.discord ? {discord: serverMeta.meta.discord} : {}),
                     mainServer: serverMeta.meta.mainServer,
                     autoconnect: serverMeta.meta.autoconnect,
+                    javaOptions: serverMeta.meta.javaOptions,
                     modules
                 })
 

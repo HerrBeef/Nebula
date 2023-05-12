@@ -1,8 +1,8 @@
-import { mkdirs } from 'fs-extra'
+import { mkdirs } from 'fs-extra/esm'
 import { join, resolve } from 'path'
-import { FileStructure } from './FileStructure'
+import { FileStructure } from './FileStructure.js'
 import { Logger } from 'winston'
-import { LoggerUtil } from '../util/LoggerUtil'
+import { LoggerUtil } from '../util/LoggerUtil.js'
 
 export abstract class BaseFileStructure implements FileStructure {
 
@@ -21,6 +21,10 @@ export abstract class BaseFileStructure implements FileStructure {
 
     public async init(): Promise<void> {
         mkdirs(this.containerDirectory)
+    }
+
+    public getContainerDirectory(): string {
+        return this.containerDirectory
     }
 
     public abstract getLoggerName(): string
